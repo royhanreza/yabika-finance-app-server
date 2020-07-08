@@ -23,7 +23,15 @@ const BillSchema = new Schema({
   cost: {
     type: Number,
     required: true,
-  }
+  },
+  transaction_number: {
+    type: String,
+    required: true,
+  },
+  status: { // 0: Aktif/Belum Selesai/Dibatalkan, 1: Menunggu Pembayaran  , 2: Selesai
+    type: Number,
+    required: true,
+  },
 })
 
 module.exports = Bill = mongoose.model('Bill', BillSchema);
