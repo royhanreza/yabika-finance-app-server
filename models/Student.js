@@ -59,7 +59,7 @@ const StudentSchema = new Schema({
     type: String,
     required: true,
   },
-  transportation: {
+  transportation: { // 0: Tidak menggunakan transportasi , 1: Menggunakan transportasi
     type: Number,
     required: true,
     default: 0,

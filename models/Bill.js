@@ -31,6 +31,7 @@ const BillSchema = new Schema({
   status: { // 0: Aktif/Belum Selesai/Dibatalkan, 1: Menunggu Pembayaran  , 2: Selesai
     type: Number,
     required: true,
+    default: 0,
   },
 })
 

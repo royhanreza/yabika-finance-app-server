@@ -82,5 +82,15 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
+router.post('/update/many', async (req, res) => {
+  const billIds = ['5f002b756d4fdb025009a635', '5f002b796d4fdb025009a636']
+  try {
+    const response = await Bill.updateMany({ _id: billIds }, { transaction_number: 'changed2' });
+    res.send(response);
+  } catch (error) {
+    res.status(400).send(error);
+  }
+})
+
 
 module.exports = router;

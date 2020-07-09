@@ -26,7 +26,7 @@ router.get('/:id', verify, (req, res) => {
 })
 
 router.get('/login/data', verify, (req, res) => {
-  Student.findById(req.student.id).populate('student_class')
+  Student.findById(req.student.id).populate('student_class').populate('transportation_location')
     .then(student => res.json(student))
 })
 

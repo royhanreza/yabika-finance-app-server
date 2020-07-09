@@ -9,6 +9,7 @@ const midtransClient = require('midtrans-client')
 const util = require('../../resources/utils');
 const { response } = require('express');
 const { base } = require('../../models/Transaction');
+const Bill = require('../../models/Bill');
 
 const MIDTRANS_BASE_URL = (process.env.MODE == 'dev') ? 'https://api.sandbox.midtrans.com' : 'https://api.midtrans.com';
 
@@ -88,8 +89,8 @@ router.post('/online/checkout', async (req, res) => {
   core.charge(req.body.midtransRequest)
   .then( async (response) => {
     try {
+      const billResponse = await Bill.updateMany({ _id: req.body.selectedBills }, { transaction_number: req.body.paymentRequest[0].transaction_number, status: 1 });
       const payments = await Payment.insertMany(req.body.paymentRequest);
-  
       const tomorrow = util.getTomorrowTime(response.transaction_time)
   
       const populatedPayments = payments.map(async (p) => await Payment.findById(p._id).populate('payment_method').populate('school_year').populate('type_of_payment'))
@@ -141,7 +142,7 @@ router.post('/online/checkout', async (req, res) => {
           expire_at: tomorrow,
         })
         const newTransaction = await transaction.save().then(t => t.populate('payment_method').execPopulate())
-        res.send({payments, transaction: newTransaction, midtrans: response})
+        res.send({payments, transaction: newTransaction, midtrans: response, billResponse})
       })
       
     } catch(error) {
@@ -244,6 +245,7 @@ router.post('/midtrans/notification_handler', (req, res) => {
         transaction.completed_at = currentDate;
         await transaction.save();
         await Payment.updateMany({ transaction_number: transaction.transaction_number }, { payment_status: 1 });
+        await Bill.updateMany({ transaction_number: transaction.transaction_number }, { status: 2 });
         util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Pembayaran Berhasil', 'Pembayaran telah diterima')
       } else if (transactionStatus == 'cancel' ||
         transactionStatus == 'deny' ||
@@ -255,7 +257,8 @@ router.post('/midtrans/notification_handler', (req, res) => {
         } else if(transactionStatus == 'deny') {
           transaction.denied_at = transactionTime
           util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Transaksi ditolak', 'Transaksi telah ditolak')
-        } 
+        }
+        await Bill.updateMany({ transaction_number: transaction.transaction_number }, { status: 0, transaction_number: undefined }); 
         transaction.completed = 1;
         transaction.completed_at = currentDate;
         await transaction.save();
