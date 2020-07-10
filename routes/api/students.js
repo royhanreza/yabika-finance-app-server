@@ -11,8 +11,8 @@ const Transaction = require('../../models/Transaction');
 // Method: GET
 // URI: /api/students
 // Desc: Get All Students
-router.get('/', verify, (req, res) => {
-  Student.find()
+router.get('/', (req, res) => {
+  Student.find().populate('student_class')
     .then(students => res.json(students))
 })
 
@@ -75,17 +75,32 @@ router.get('/:studentId/payments', async (req, res) => {
     .then(payment => res.json(payment))
 })
 
+router.get('/:studentId/pay-data', async (req, res) => {
+  const studentId = req.params.studentId;
+  const student = await Student.findOne({_id: studentId})
+    .populate('student_class')
+    .populate('major')
+    .populate('transport_location')
+
+  const bills = await Bill.find({student: studentId}).populate('type_of_payment').populate('school_year')
+
+  res.send({student, bills})
+})
+
 
 // Method: POST
 // URI: /api/students
 // Desc: Create New Student
 router.post('/', async (req, res) => {
 
+  // res.send(req.body)
+
   const {
     nis,
     name,
     place_of_birth,
     date_of_birth,
+    gender,
     religion,
     student_class,
     major,
@@ -104,7 +119,9 @@ router.post('/', async (req, res) => {
   } = req.body;
 
   const nisExist = await Student.findOne({ nis });
-  if(nisExist) return res.status(400).send({msg: 'NIS already exist'});
+  const emailExist = await Student.findOne({ email });
+  if(nisExist) return res.status(400).send({msg: 'Siswa dengan NIS ' + nis + ' telah terdaftar'});
+  if(emailExist) return res.status(400).send({msg: 'Email ' + email + ' telah terdaftar, gunakan email yang berbeda'});
 
   const salt = await bcrypt.genSalt(10)
   const hashPassword = await bcrypt.hash(password, salt);
@@ -114,6 +131,7 @@ router.post('/', async (req, res) => {
     name, 
     place_of_birth, 
     date_of_birth, 
+    gender,
     religion,
     student_class, 
     major, 
@@ -148,6 +166,7 @@ router.put('/:id', async (req, res) => {
     name,
     place_of_birth,
     date_of_birth,
+    gender,
     religion,
     student_class,
     major,
@@ -175,6 +194,7 @@ router.put('/:id', async (req, res) => {
       name,
       place_of_birth,
       date_of_birth,
+      gender,
       religion,
       student_class,
       major,
@@ -202,6 +222,7 @@ router.put('/:id', async (req, res) => {
 // Desc: Delete Student
 router.delete('/:id', async (req, res) => {
   const _id = req.params.id;
+
   try {
     await Student.findOneAndDelete({_id})
     res.send({status: 'success', msg: 'DATA HAS BEEN DELETED'})
@@ -213,8 +234,22 @@ router.delete('/:id', async (req, res) => {
 // Method: PATCH
 // URI: /api/students/{id}
 // Desc: Update Student
-router.patch('/:id', verify, async (req, res) => {
+router.patch('/:id', async (req, res) => {
   const _id = req.params.id;
+
+  const { old_nis, old_email, nis, email } = req.body
+
+
+  if(nis !== old_nis) {
+    const nisExist = await Student.findOne({ nis });
+    if(nisExist) return res.status(400).send({msg: 'Siswa dengan NIS ' + nis + ' telah terdaftar'});
+  }
+
+  if(email !== old_email) {
+    const emailExist = await Student.findOne({ email });
+    if(emailExist) return res.status(400).send({msg: 'Email ' + email + ' telah terdaftar, gunakan email yang berbeda'});
+  }
+  
   try {
     const newStudent = await Student.findOneAndUpdate({_id}, req.body, 
       {new: true});

@@ -56,6 +56,10 @@ const TransactionSchema = new Schema({
     type: Number,
     required: true,
   },
+  method: { // 0 : Langsung || 1 : Online
+    type: Number,
+    default: 0,
+  },
   
 })
 

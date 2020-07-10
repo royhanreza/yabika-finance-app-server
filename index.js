@@ -1,5 +1,7 @@
 const express = require('express')
 const mongoose = require('mongoose')
+const cors = require('cors')
+const helmet = require('helmet')
 require('dotenv').config()
 const students = require('./routes/api/students');
 const classes = require('./routes/api/classes');
@@ -20,6 +22,8 @@ const app = express();
 
 app.use(express.static('public'));
 app.use(express.json());
+app.use(cors());
+app.use(helmet());
 
 const DB_KEY = process.env.DB_KEY;
 

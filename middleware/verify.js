@@ -16,7 +16,7 @@ function verify(req, res, next) {
     // } else { next() }
     next()
   } catch (error) {
-    res.status(400).json({msg: 'Token is not valid'});
+    res.status(400).json({msg: 'Akses ditolak, silahkan login kembali'});
   }
 
 }

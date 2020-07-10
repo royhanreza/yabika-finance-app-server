@@ -10,6 +10,10 @@ const StudentSchema = new Schema({
     required: true,
     unique: true,
   },
+  nis: {
+    type: String,
+    unique: true,
+  },
   name: {
     type: String,
     required: true,

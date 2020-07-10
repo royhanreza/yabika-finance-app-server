@@ -7,7 +7,7 @@ const Class = require('../../models/Class');
 // URI: /api/classes
 // Desc: Get All Classes
 router.get('/', (req, res) => {
-  Class.find()
+  Class.find().sort('name')
     .then(classes => res.json(classes))
 })
 
@@ -27,7 +27,7 @@ router.post('/', async (req, res) => {
   const { name, grade } = req.body;
 
   const classExist = await Class.findOne({ name });
-  if(classExist) return res.status(400).send({msg: 'Class already exist'});
+  if(classExist) return res.status(400).send({msg: 'Kelas telah terdaftar'});
 
   const studentClass = new Class({ name, grade })
 
@@ -47,6 +47,25 @@ router.put('/:id', async (req, res) => {
   const _id = req.params.id;
   try {
     const newClass = await Class.findOneAndUpdate({_id}, {name, grade}, {new: true});
+    res.send({class: newClass})
+  } catch(error) {
+    res.status(400).send(error);
+  }
+})
+
+// Method: PUT
+// URI: /api/classes/{id}
+// Desc: Update Class
+router.patch('/:id', async (req, res) => {
+  const _id = req.params.id;
+
+  const name = req.body.name;
+
+  const classExist = await Class.findOne({ name });
+  if(classExist) return res.status(400).send({msg: 'Kelas telah terdaftar'});
+
+  try {
+    const newClass = await Class.findOneAndUpdate({_id}, req.body, {new: true});
     res.send({class: newClass})
   } catch(error) {
     res.status(400).send(error);

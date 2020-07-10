@@ -5,7 +5,7 @@ const Transaction = require('../../models/Transaction');
 const util = require('../../resources/utils')
 
 router.get('/', (req, res) => {
-  Transaction.find()
+  Transaction.find().populate('student').populate('payment_method')
     .then(transaction => res.json(transaction))
 })
 
