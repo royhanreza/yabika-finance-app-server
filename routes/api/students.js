@@ -53,7 +53,7 @@ router.get('/:studentId/history', async (req, res) => {
   const studentId = req.params.studentId;
   Transaction.find({student: studentId, completed: 1})
     .populate('payment_method')
-    .sort({'date': -1})
+    .sort({'completed_at': -1})
     .then(payment => res.json(payment))
 })
 
@@ -61,7 +61,7 @@ router.get('/:studentId/transactions', async (req, res) => {
   const studentId = req.params.studentId;
   Transaction.find({student: studentId})
     .populate('payment_method')
-    .sort({'date': -1})
+    .sort({'created_at': -1})
     .then(transaction => res.json(transaction))
 })
 
@@ -82,7 +82,7 @@ router.get('/:studentId/pay-data', async (req, res) => {
     .populate('major')
     .populate('transport_location')
 
-  const bills = await Bill.find({student: studentId}).populate('type_of_payment').populate('school_year')
+  const bills = await Bill.find({student: studentId, status: 0}).populate('type_of_payment').populate('school_year').sort({month: 'asc'})
 
   res.send({student, bills})
 })
@@ -259,6 +259,48 @@ router.patch('/:id', async (req, res) => {
   }
 })
 
+router.patch('/:id/actions/edit-account', async (req, res) => {
+  const _id = req.params.id;
+  const { username, email, currentPassword, newPassword, isNewUsername, isNewEmail, isNewPassword, oldUsername, oldEmail } = req.body
+  
+  
+  // TODO REQ.BODY
+  // CHECK PASSWORD
+  const student = await Student.findOne({$or: [{username: oldUsername}, {email: oldEmail}]});
+  if(!student) return res.status(400).send({msg: 'User tidak ditemukan'});
+
+  const studentPassword = await bcrypt.compare(currentPassword, student.password);
+  if(!studentPassword) return res.status(400).send({msg: 'Password salah'});
+
+  // CHECK SIMILAR USERNAME
+  if(isNewUsername) {
+    const usernameExist = await Student.findOne({ username });
+    if(usernameExist) return res.status(400).send({msg: 'Username telah digunakan'});
+  }
+
+  // CHECK SIMILAR EMAIL
+  if(isNewEmail) {
+    const emailExist = await Student.findOne({ email });
+    if(emailExist) return res.status(400).send({msg: 'Email telah digunakan'});
+  }
+
+  const salt = await bcrypt.genSalt(10)
+  const hashPassword = await bcrypt.hash(newPassword, salt);
+
+  const reqBody = (isNewPassword) ? { username, email, password: hashPassword } : { username, email }
+
+  // res.send(reqBody)
+  try {
+    const newStudent = await Student.findOneAndUpdate({_id}, reqBody, 
+      {new: true});
+    const studentData = await Student.findById(newStudent._id).populate('student_class').populate('transportation_location');
+    res.send({student: studentData})
+  } catch(error) {
+    res.status(400).send(error);
+  }
+
+})
+
 // Method: POST
 // URI: /api/students/login
 // Desc: Login Student
@@ -270,7 +312,7 @@ router.post('/login', async (req, res) => {
   //   return res.status(400).json({msg: 'Please enter all fields'})
   // }
 
-  const student = await Student.findOne({$or: [{username: identity}, {email: identity}]}).populate('student_class');
+  const student = await Student.findOne({$or: [{username: identity}, {email: identity}]}).populate('student_class').populate('transportation_location');
   if(!student) return res.status(400).send({msg: 'Username atau password salah'});
 
   // password is correct

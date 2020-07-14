@@ -1,9 +1,29 @@
 const axios = require('axios');
 const moment = require('moment');
 const crypto = require('crypto');
+const Nexmo = require('nexmo')
+require('dotenv').config()
+
+const nexmo = new Nexmo({
+  apiKey: process.env.NEXMO_API_KEY,
+  apiSecret: process.env.NEXMO_API_SECRET
+})
+
 
 const getTomorrowTime = (currentTime) => {
   return moment(currentTime).add(1, 'days').format('YYYY-MM-DD hh:mm:ss');
+}
+
+const getGopayExpireTime = (currentTime) => {
+  return moment(currentTime).add(15, 'm').format('YYYY-MM-DD hh:mm:ss');
+}
+
+const getMandiriBillExpireTime = (currentTime) => {
+  return moment(currentTime).add(2, 'h').format('YYYY-MM-DD hh:mm:ss');
+}
+
+const getCstoreExpireTime = (currentTime) => {
+  return moment(currentTime).add(2, 'h').format('YYYY-MM-DD hh:mm:ss');
 }
 
 const sendPushNotification = async (expoPushToken, notificationTitle, notificationBody) => {
@@ -43,6 +63,30 @@ const toHash512 = (text) => {
   return resHash;
 }
 
+const sendSms = (from, to, text) => {
+  return new Promise((resolve, reject) => {
+    nexmo.message.sendSms(from, to, text, (err, responseData) => {
+      if (err) {
+          console.log(err);
+          reject(err)
+      } else {
+          if(responseData.messages[0]['status'] === "0") {
+              resolve({ msg: `Message sent successfully to ${to}`, responseData })
+              console.log("Message sent successfully.");
+          } else {
+              reject({ msg: `Message failed with error: ${responseData.messages[0]['error-text']}` })
+              console.log(`Message failed with error: ${responseData.messages[0]['error-text']}`);
+              
+          }
+      }
+    })
+  })
+}
+
 exports.getTomorrowTime = getTomorrowTime;
+exports.getGopayExpireTime = getGopayExpireTime;
+exports.getMandiriBillExpireTime = getMandiriBillExpireTime;
+exports.getCstoreExpireTime = getCstoreExpireTime;
 exports.sendPushNotification = sendPushNotification;
 exports.toHash512 = toHash512;
+exports.sendSms = sendSms;

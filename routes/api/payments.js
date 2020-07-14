@@ -10,6 +10,7 @@ const util = require('../../resources/utils');
 const { response } = require('express');
 const { base } = require('../../models/Transaction');
 const Bill = require('../../models/Bill');
+const { route } = require('./students');
 
 const MIDTRANS_BASE_URL = (process.env.MODE == 'dev') ? 'https://api.sandbox.midtrans.com' : 'https://api.midtrans.com';
 
@@ -85,13 +86,60 @@ router.post('/online/checkout', async (req, res) => {
   //   transaction_id: "2323"
   // }
 
+  const midtransPaymentType = req.body.midtransPaymentType;
 
   core.charge(req.body.midtransRequest)
   .then( async (response) => {
     try {
+
       const billResponse = await Bill.updateMany({ _id: req.body.selectedBills }, { transaction_number: req.body.paymentRequest[0].transaction_number, status: 1 });
       const payments = await Payment.insertMany(req.body.paymentRequest);
-      const tomorrow = util.getTomorrowTime(response.transaction_time)
+      const bankTransferExpireTime = util.getTomorrowTime(response.transaction_time)
+      const gopayExpireTime = util.getGopayExpireTime(response.transaction_time)
+      const mandiriBillExpireTime = util.getMandiriBillExpireTime(response.transaction_time)
+      const cstoreExpireTime = util.getCstoreExpireTime(response.transaction_time)
+
+      const expireTime = (type) => {
+        switch(type) {
+          case 'bank_transfer':
+            return bankTransferExpireTime
+          case 'echannel':
+            return mandiriBillExpireTime
+          case 'gopay':
+            return gopayExpireTime
+          case 'cstore':
+            return cstoreExpireTime
+          default: 
+            return null;
+        }
+      }
+
+      const paymentTypeCode = (type) => {
+        switch(type) {
+          case 'bank_transfer':
+            return {
+              va_number: response.va_numbers[0].va_number
+            }
+          case 'echannel':
+            return {
+              biller_code: response.biller_code,
+              bill_key: response.bill_key
+            }
+          case 'gopay':
+            return {
+              gopay_qr_code_url: response.actions[0].url,
+              gopay_deeplink_url: response.actions[1].url,
+              gopay_get_status_url: response.actions[2].url,
+              gopay_cancel_url: response.actions[3].url,
+            }
+          case 'cstore':
+            return {
+              cstore_payment_code: response.payment_code
+            }
+          default: 
+            return {};
+        }
+      }
   
       const populatedPayments = payments.map(async (p) => await Payment.findById(p._id).populate('payment_method').populate('school_year').populate('type_of_payment'))
       Promise.all(populatedPayments).then( async (result) => {
@@ -139,7 +187,8 @@ router.post('/online/checkout', async (req, res) => {
           order_id: response.order_id, 
           midtrans_transaction_id: response.transaction_id, 
           created_at: response.transaction_time,
-          expire_at: tomorrow,
+          expire_at: expireTime(midtransPaymentType),
+          ...paymentTypeCode(response.payment_type)
         })
         const newTransaction = await transaction.save().then(t => t.populate('payment_method').execPopulate())
         res.send({payments, transaction: newTransaction, midtrans: response, billResponse})
@@ -150,7 +199,7 @@ router.post('/online/checkout', async (req, res) => {
     }
   })
   .catch(error => {
-    res.status(400).send(error.ApiResponse)
+    res.status(400).send({error: error.ApiResponse, body: req.body})
   })
 
 })
@@ -205,6 +254,13 @@ router.post('/match/signature', (req, res) => {
 
 router.post('/midtrans/notification_handler', (req, res) => {
   let receivedJson = req.body;
+
+  // try {
+  //   JSON.parse(receivedJson);
+  // } catch (e) {
+  //   return res.status(400).send('Bad Request');
+  // }
+
   core.transaction.notification(receivedJson)
     .then( async (transactionStatusObject) => {
 
@@ -241,22 +297,25 @@ router.post('/midtrans/notification_handler', (req, res) => {
         // Note: Non-card transaction will become 'settlement' on payment success
         // Card transaction will also become 'settlement' D+1, which you can ignore
         // because most of the time 'capture' is enough to be considered as success
+        util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Pembayaran Berhasil', 'Pembayaran telah diterima')
         transaction.completed = 1;
         transaction.completed_at = currentDate;
         await transaction.save();
         await Payment.updateMany({ transaction_number: transaction.transaction_number }, { payment_status: 1 });
         await Bill.updateMany({ transaction_number: transaction.transaction_number }, { status: 2 });
-        util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Pembayaran Berhasil', 'Pembayaran telah diterima')
+        
       } else if (transactionStatus == 'cancel' ||
         transactionStatus == 'deny' ||
         transactionStatus == 'expire'){
         // TODO set transaction status on your databaase to 'failure'
         if(transactionStatus == 'cancel') {
-          transaction.canceled_at = transactionTime
           util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Transaksi Dibatalkan', 'Transaksi telah dibatalkan')
+          transaction.canceled_at = transactionTime
+          
         } else if(transactionStatus == 'deny') {
-          transaction.denied_at = transactionTime
           util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Transaksi ditolak', 'Transaksi telah ditolak')
+          transaction.denied_at = transactionTime
+          
         }
         await Bill.updateMany({ transaction_number: transaction.transaction_number }, { status: 0, transaction_number: undefined }); 
         transaction.completed = 1;
@@ -273,6 +332,8 @@ router.post('/midtrans/notification_handler', (req, res) => {
       }
       // console.log(summary);
       res.send(summary);
+    }).catch(err => {
+      res.send(err)
     })
 })
 
@@ -316,6 +377,8 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
+//============================================================================================================================
+
 router.delete('/delete/all', async (req, res) => {
   await Payment.deleteMany({method: 1}).then(response => res.send('ALL PAYMENTS DELETED'))
 })
@@ -325,5 +388,15 @@ router.delete('/delete/all-transactions', async (req, res) => {
   await Transaction.deleteMany({completed: completed}).then(response => res.send('ALL TRANSACTIONS DELETED'))
 })
 
+router.post('/notification/send/test', async(req, res) => {
+  util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Pembayaran Berhasil', 'Pembayaran telah diterima');
+  res.status(204).send();
+})
+
+router.post('/online/checkout/cancel-request', async (req, res) => {
+  setTimeout(() => {
+    res.send(req.body)
+  }, 5000)
+})
 
 module.exports = router;

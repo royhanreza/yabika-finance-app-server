@@ -19,6 +19,7 @@
     "midtrans-client": "^1.1.1",
     "moment": "^2.27.0",
     "mongoose": "^5.9.21",
+    "nexmo": "^2.8.0",
     "uuid": "^8.2.0"
   }
 }

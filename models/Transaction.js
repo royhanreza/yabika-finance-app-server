@@ -60,7 +60,31 @@ const TransactionSchema = new Schema({
     type: Number,
     default: 0,
   },
-  
+  va_number: {
+    type: String,
+  },
+  biller_code: {
+    type: String,
+  },
+  bill_key: {
+    type: String,
+  },
+  gopay_qr_code_url: {
+    type: String,
+  },
+  gopay_deeplink_url: {
+    type: String,
+  },
+  gopay_get_status_url: {
+    type: String,
+  },
+  gopay_cancel_url: {
+    type: String,
+  },
+  cstore_payment_code: {
+    type: String,
+  }
+
 })
 
 module.exports = Transaction = mongoose.model('Transaction', TransactionSchema);

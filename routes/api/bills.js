@@ -26,16 +26,14 @@ router.get('/:id', (req, res) => {
 router.post('/', async (req, res) => {
   const { student, type_of_payment, month, school_year, cost } = req.body;
 
-  const studentExist = await Bill.findOne({ student });
-  const typeOfPaymentExist = await Bill.findOne({ type_of_payment });
-  const monthExist = await Bill.findOne({ month });
-  const schoolYearExist = await Bill.findOne({ school_year });
-  if(studentExist && typeOfPaymentExist && monthExist && schoolYearExist) return res.status(400).send({msg: 'Bill already exist'});
+  const billExist = await Bill.findOne({ student, type_of_payment, month, school_year });
+  if(billExist) return res.status(400).send({msg: 'Tagihan sudah ada'});
 
   const bill = new Bill({ student, type_of_payment, month, school_year, cost })
 
   try {
-    const newBill = await bill.save();
+    const newBill = await bill.save().then(t => t.populate('type_of_payment').populate('school_year').execPopulate());
+    // const  newBill.populate('type_of_payment').populate('school_year')
     res.send({bill: newBill})
   } catch(error) {
     res.status(400).send(error);
@@ -87,6 +85,19 @@ router.post('/update/many', async (req, res) => {
   try {
     const response = await Bill.updateMany({ _id: billIds }, { transaction_number: 'changed2' });
     res.send(response);
+  } catch (error) {
+    res.status(400).send(error);
+  }
+})
+
+router.delete('/delete/all', async (req, res) => {
+  await Bill.deleteMany({}).then(response => res.send('ALL BILLS DELETED'))
+})
+
+router.patch('/actions/update-status', async(re, res) => {
+  try {
+    const response = await Bill.updateMany({ status: [1, 2] }, { status: 0 });
+    res.send('UPDATED STATUS TO 0');
   } catch (error) {
     res.status(400).send(error);
   }

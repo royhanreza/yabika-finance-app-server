@@ -7,7 +7,7 @@ const TypeOfPayment = require('../../models/TypeOfPayment');
 // URI: /api/type-of-payments
 // Desc: Get All Type Of Payments
 router.get('/', (req, res) => {
-  TypeOfPayment.find()
+  TypeOfPayment.find().populate('payment_type')
     .then(typeOfPayments => res.json(typeOfPayments))
 })
 

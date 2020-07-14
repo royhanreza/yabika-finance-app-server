@@ -81,5 +81,14 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
+router.patch('/action/update-many', async (req, res) => {
+  try{
+    const updated = await PaymentMethod.updateMany({ status: undefined }, { status: 0 });
+    res.send({updated})
+  } catch(err) {
+    res.status(400).send('ERROR')
+  }
+})
+
 
 module.exports = router;

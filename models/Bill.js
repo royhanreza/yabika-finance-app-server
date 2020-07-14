@@ -26,7 +26,6 @@ const BillSchema = new Schema({
   },
   transaction_number: {
     type: String,
-    required: true,
   },
   status: { // 0: Aktif/Belum Selesai/Dibatalkan, 1: Menunggu Pembayaran  , 2: Selesai
     type: Number,

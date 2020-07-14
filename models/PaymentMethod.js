@@ -27,6 +27,9 @@ const PaymentMethodSchema = new Schema({
   image: {
     type: String,
     default: 'default_payment_method.png'
+  },
+  status: {
+    type: Number
   }
 })
 
