@@ -317,6 +317,8 @@ router.post('/midtrans/notification_handler', (req, res) => {
           transaction.denied_at = transactionTime
           
         }
+        const paymentDetails = transaction.paymentsDetails.map(payment => payment._id);
+        await Payment.deleteMany({ _id: paymentDetails });
         await Bill.updateMany({ transaction_number: transaction.transaction_number }, { status: 0, transaction_number: undefined }); 
         transaction.completed = 1;
         transaction.completed_at = currentDate;
@@ -380,12 +382,12 @@ router.delete('/:id', async (req, res) => {
 //============================================================================================================================
 
 router.delete('/delete/all', async (req, res) => {
-  await Payment.deleteMany({method: 1}).then(response => res.send('ALL PAYMENTS DELETED'))
+  await Payment.deleteMany().then(response => res.send('ALL PAYMENTS DELETED'))
 })
 
 router.delete('/delete/all-transactions', async (req, res) => {
   const completed = req.body.completed
-  await Transaction.deleteMany({completed: completed}).then(response => res.send('ALL TRANSACTIONS DELETED'))
+  await Transaction.deleteMany().then(response => res.send('ALL TRANSACTIONS DELETED'))
 })
 
 router.post('/notification/send/test', async(req, res) => {

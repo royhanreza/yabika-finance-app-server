@@ -12,17 +12,21 @@ const Transaction = require('../../models/Transaction');
 // URI: /api/students
 // Desc: Get All Students
 router.get('/', (req, res) => {
-  Student.find().populate('student_class')
+  Student.find().populate('student_class').populate('transportation_location')
     .then(students => res.json(students))
 })
 
 // Method: GET
 // URI: /api/majors/{id}
 // Desc: Get Major By Id
-router.get('/:id', verify, (req, res) => {
+router.get('/:id', (req, res) => {
   const _id = req.params.id;
-  Student.findOne({_id})
+  try {
+    Student.findOne({_id}).populate('student_class').populate('transportation_location')
     .then(student => res.json(student))
+  } catch (error) {
+    res.status(400).send('Siswa tidak ditemukan')
+  }
 })
 
 router.get('/login/data', verify, (req, res) => {
@@ -80,7 +84,7 @@ router.get('/:studentId/pay-data', async (req, res) => {
   const student = await Student.findOne({_id: studentId})
     .populate('student_class')
     .populate('major')
-    .populate('transport_location')
+    .populate('transportation_location')
 
   const bills = await Bill.find({student: studentId, status: 0}).populate('type_of_payment').populate('school_year').sort({month: 'asc'})
 
@@ -140,9 +144,11 @@ router.post('/', async (req, res) => {
     year_of_entry, 
     address, 
     transportation, 
-    transportation_location, 
+    transportation_location,
+    init_username: username, 
     username, 
-    email, 
+    email,
+    init_password: password, 
     password: hashPassword, 
     phone, 
     photo, 
@@ -152,6 +158,94 @@ router.post('/', async (req, res) => {
   try {
     const newStudent = await student.save();
     res.send({student: newStudent})
+  } catch(error) {
+    res.status(400).send(error);
+  }
+})
+
+// Method: POST
+// URI: /api/students
+// Desc: Create New Student
+router.post('/actions/insert-many', async (req, res) => {
+  const students = req.body.students;
+  const finalStudents = await Promise.all(students.map( async (student) => {
+    const salt = await bcrypt.genSalt(10)
+    const hashPassword = await bcrypt.hash(student.password, salt);
+    return {
+      ...student,
+      init_username: student.username,
+      init_password: student.password, 
+      password: hashPassword
+   }
+  })) 
+
+  // res.send(finalStudents)
+  // for(let i = 0; i < students; i++) {
+
+  // }
+
+  // res.send(req.body)
+
+  // const {
+  //   nis,
+  //   name,
+  //   place_of_birth,
+  //   date_of_birth,
+  //   gender,
+  //   religion,
+  //   student_class,
+  //   major,
+  //   status,
+  //   wali,
+  //   year_of_entry,
+  //   address,
+  //   transportation,
+  //   transportation_location,
+  //   username,
+  //   email,
+  //   password,
+  //   phone,
+  //   photo,
+  //   expo_push_token
+  // } = req.body;
+
+  // // const nisExist = await Student.findOne({ nis });
+  // // const emailExist = await Student.findOne({ email });
+  // // if(nisExist) return res.status(400).send({msg: 'Siswa dengan NIS ' + nis + ' telah terdaftar'});
+  // // if(emailExist) return res.status(400).send({msg: 'Email ' + email + ' telah terdaftar, gunakan email yang berbeda'});
+
+  // const salt = await bcrypt.genSalt(10)
+  // const hashPassword = await bcrypt.hash(password, salt);
+
+  // const student = new Student({
+  //   nis, 
+  //   name, 
+  //   place_of_birth, 
+  //   date_of_birth, 
+  //   gender,
+  //   religion,
+  //   student_class, 
+  //   major, 
+  //   status, 
+  //   wali, 
+  //   year_of_entry, 
+  //   address, 
+  //   transportation, 
+  //   transportation_location,
+  //   init_username: username, 
+  //   username, 
+  //   email,
+  //   init_password: password, 
+  //   password: hashPassword, 
+  //   phone, 
+  //   photo, 
+  //   expo_push_token
+  // })
+
+  try {
+    const insertedStudents = await Student.insertMany(finalStudents, { ordered: false });
+    // const newStudent = await student.save();
+    res.send({student: insertedStudents.length})
   } catch(error) {
     res.status(400).send(error);
   }
@@ -231,6 +325,17 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
+
+router.post('/actions/delete-many', async (req, res) => {
+  const ids = req.body.ids
+  try {
+    const deletedStudents = await Student.deleteMany({_id: ids});
+    res.send(deletedStudents);
+  } catch (error) {
+    res.status(400).send(error)
+  }
+})
+
 // Method: PATCH
 // URI: /api/students/{id}
 // Desc: Update Student
@@ -299,6 +404,51 @@ router.patch('/:id/actions/edit-account', async (req, res) => {
     res.status(400).send(error);
   }
 
+})
+
+router.patch('/:id/actions/save-expo-push-token', async (req, res) => {
+  const _id = req.params.id;
+  const expo_push_token= req.body.expo_push_token;
+  try {
+    const updatedStudent = await Student.findOneAndUpdate({ _id }, {expo_push_token}, {new: true});
+    res.send(updatedStudent);
+  } catch (error) {
+    res.status(400).send(error)
+  }
+  // res.send({_id, expo_push_token})
+})
+
+router.patch('/:id/actions/update-expo-push-token', async (req, res) => {
+  const _id = req.params.id;
+  const expo_push_token= req.body.expo_push_token;
+  try {
+    const updatedStudent = await Student.findOneAndUpdate({ _id }, {expo_push_token}, {new: true});
+    res.send(updatedStudent);
+  } catch (error) {
+    res.status(400).send(error)
+  }
+  // res.send({_id, expo_push_token})
+})
+
+router.patch('/actions/graduate', async (req, res) => {
+  const ids = req.body.ids;
+  try {
+    const updatedStudent = await Student.updateMany({_id: ids}, { status: 2 });
+    res.send(updatedStudent)
+  } catch (error) {
+    res.status(400).send(error)
+  }
+})
+
+router.patch('/actions/grade-promote', async (req, res) => {
+  const ids = req.body.ids;
+  const nextClassId = req.body.nextClassId;
+  try {
+    const updatedStudent = await Student.updateMany({_id: ids}, { student_class: nextClassId });
+    res.send(updatedStudent)
+  } catch (error) {
+    res.status(400).send(error)
+  }
 })
 
 // Method: POST

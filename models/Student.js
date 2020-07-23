@@ -10,7 +10,7 @@ const StudentSchema = new Schema({
     required: true,
     unique: true,
   },
-  nis: {
+  nisn: {
     type: String,
     unique: true,
   },
@@ -45,14 +45,13 @@ const StudentSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Major',
   },
-  status: {
+  status: { // 0: Berhenti 1: Aktif 2: Lulus
     type: Number,
     required: true, 
     default: 1,
   },
   wali: {
     type: String,
-    required: true,
   },
   year_of_entry: { // tahun masuk
     type: Number,
@@ -78,7 +77,13 @@ const StudentSchema = new Schema({
   },
   email: {
     type: String,
-    unique: true,
+    sparse: true
+  },
+  init_username: {
+    type: String,
+  },
+  init_password: {
+    type: String,
   },
   password: {
     type: String,

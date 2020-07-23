@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 
-function verifyAdmin(req, res, next) {
+function verify(req, res, next) {
   const JWT_SECRET = process.env.JWT_SECRET
 
   const token = req.header('x-auth-token')
@@ -10,12 +10,15 @@ function verifyAdmin(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded
+    req.administrator = decoded;
+    // if(req.user.accessRights !== 1) {
+    //   res.status(400).json({msg: 'FORBIDDEN ACCESS'});
+    // } else { next() }
     next()
   } catch (error) {
-    res.status(400).json({msg: 'Token is not valid'});
+    res.status(400).json({msg: 'Akses ditolak, silahkan login kembali'});
   }
 
 }
 
-module.exports = verifyAdmin;
+module.exports = verify;

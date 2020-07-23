@@ -53,6 +53,16 @@ router.put('/:id', async (req, res) => {
   }
 })
 
+router.patch('/:id', async (req, res) => {
+  const _id = req.params.id;
+  try {
+    const newSchool = await School.findOneAndUpdate({_id}, req.body, {new: true});
+    res.send({school: newSchool})
+  } catch(error) {
+    res.status(400).send(error);
+  }
+})
+
 // Method: DELETE
 // URI: /api/majors/{id}
 // Desc: Delete Major

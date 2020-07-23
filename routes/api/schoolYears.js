@@ -28,7 +28,7 @@ router.post('/', async (req, res) => {
   const name = yearStart + '/' + yearEnd; 
 
   const schoolYearExist = await SchoolYear.findOne({ name });
-  if(schoolYearExist) return res.status(400).send({msg: 'School year already exist'});
+  if(schoolYearExist) return res.status(400).send({msg: 'Tahun ajaran ' + name + ' sudah ada'});
 
   const schoolYear = new SchoolYear({ name, yearStart, yearEnd })
 
@@ -58,6 +58,10 @@ router.put('/:id', async (req, res) => {
 // URI: /api/school-years/{id}
 // Desc: Update School Year
 router.patch('/:id', async (req, res) => {
+
+  const schoolYearExist = await SchoolYear.findOne({ name: req.body.name });
+  if(schoolYearExist) return res.status(400).send({msg: 'Tahun ajaran ' + req.body.name + ' sudah ada'});
+
   const _id = req.params.id;
   try {
     const newSchoolYear = await SchoolYear.findOneAndUpdate({_id}, req.body, {new: true});

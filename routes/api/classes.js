@@ -39,6 +39,16 @@ router.post('/', async (req, res) => {
   }
 })
 
+router.post('/actions/delete-many', async (req, res) => {
+  const ids = req.body.ids
+  try {
+    const deletedClass = await Class.deleteMany({_id: ids});
+    res.send(deletedClass);
+  } catch (error) {
+    res.status(400).send(error)
+  }
+})
+
 // Method: PUT
 // URI: /api/classes/{id}
 // Desc: Update Class

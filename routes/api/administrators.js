@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs')
 const verify = require('../../middleware/verify');
+const verifyAdmin = require('../../middleware/verifyAdmin');
 const Administrator = require('../../models/Administrator');
+const jwt = require('jsonwebtoken')
 
 // Method: GET
 // URI: /api/majors
@@ -28,7 +30,7 @@ router.post('/', async (req, res) => {
   const { nip, name, access_rights, position, address, username, email, password, phone } = req.body;
 
   const usernameExist = await Administrator.findOne({ username });
-  if(usernameExist) return res.status(400).send({msg: 'Username or Email already exist'});
+  if(usernameExist) return res.status(400).send({msg: 'Username telah digunakan'});
 
   const salt = await bcrypt.genSalt(10)
   const hashPassword = await bcrypt.hash(password, salt);
@@ -61,6 +63,78 @@ router.put('/:id', async (req, res) => {
   }
 })
 
+router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  const JWT_SECRET = process.env.JWT_SECRET;
+  // Simple validation
+  // if(!email || !password) {
+  //   return res.status(400).json({msg: 'Please enter all fields'})
+  // }
+
+  const admin = await Administrator.findOne({$or: [{username: username}, {email: username}]})
+  if(!admin) return res.status(400).send({msg: 'Username atau password salah'});
+
+  // password is correct
+  const adminPassword = await bcrypt.compare(password, admin.password);
+  if(!adminPassword) return res.status(400).send({msg: 'Username atau password salah'});
+
+  const token = jwt.sign({id: admin._id}, JWT_SECRET, {expiresIn: '1d'});
+
+  // res.header('x-auth-token', token).send({token, user})
+  res.json({token, admin})
+})
+
+router.get('/login/data', verifyAdmin, (req, res) => {
+  Administrator.findById(req.administrator.id)
+    .then(admin => res.json(admin))
+})
+
+router.patch('/:id', async (req, res) => {
+  const _id = req.params.id;
+
+  const { old_password, new_password } = req.body;
+
+  let request = req.body;
+
+  if(new_password !== undefined) {
+    const salt = await bcrypt.genSalt(10)
+    const hashPassword = await bcrypt.hash(new_password, salt);
+    request = {...req.body, password: hashPassword}
+  }
+
+  if(req.body.isNewUsername) {
+    const usernameExist = await Administrator.findOne({ username: req.body.username })
+    if(usernameExist) {
+      return res.status(400).send({msg: 'Username telah digunakan'});
+    } else {
+      request = {...req.body, username: req.body.username}
+    }
+    
+  }
+
+  const admin = await Administrator.findById(_id)
+  
+  const adminPassword = await bcrypt.compare(old_password, admin.password);
+  if(!adminPassword) return res.status(400).send({msg: 'Password salah'});
+
+  try {
+    const newAdministrator = await Administrator.findOneAndUpdate({_id}, request, {new: true});
+    res.send({administrator: newAdministrator})
+  } catch(error) {
+    res.status(400).send(error);
+  }
+})
+
+router.patch('/actions/edit-administrator/:id', async (req, res) => {
+  const _id = req.params.id;
+
+  try {
+    const newAdministrator = await Administrator.findOneAndUpdate({_id}, req.body, {new: true});
+    res.send({administrator: newAdministrator})
+  } catch(error) {
+    res.status(400).send(error);
+  }
+})
 // Method: DELETE
 // URI: /api/majors/{id}
 // Desc: Delete Major

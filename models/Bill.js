@@ -32,6 +32,10 @@ const BillSchema = new Schema({
     required: true,
     default: 0,
   },
+  created_at: {
+    type: Date,
+    default: Date.now
+  }
 })
 
 module.exports = Bill = mongoose.model('Bill', BillSchema);

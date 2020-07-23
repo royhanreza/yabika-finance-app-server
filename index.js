@@ -17,12 +17,14 @@ const bills = require('./routes/api/bills');
 const payments = require('./routes/api/payments');
 const transactions = require('./routes/api/transactions');
 const sms = require('./routes/api/sms');
+const billSetting = require('./routes/api/billSettings');
 
 
 const app = express();
 
 app.use(express.static('public'));
-app.use(express.json());
+app.use(express.json({limit: '50mb'}));
+// app.use(express.urlencoded({limit: '50mb'}));
 app.use(cors());
 app.use(helmet());
 
@@ -46,6 +48,7 @@ app.use('/api/bills', bills);
 app.use('/api/payments', payments);
 app.use('/api/transactions', transactions);
 app.use('/api/sms', sms);
+app.use('/api/bill-settings', billSetting);
 
 
 const port = process.env.PORT || 5000;

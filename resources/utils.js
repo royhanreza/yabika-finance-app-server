@@ -53,7 +53,40 @@ const sendPushNotification = async (expoPushToken, notificationTitle, notificati
     }
   }
   const response = await axios.post('https://exp.host/--/api/v2/push/send', body, config)
-  // console.log(response.data)
+  console.log(response.data)
+}
+
+const sendChunkPushNotification = async (someExpoPushToken, notificationTitle, notificationBody) => {
+  const messages = [];
+  for(let i = 0; i < someExpoPushToken.length; i++) {
+    messages.push({
+      to: someExpoPushToken[i],
+      sound: 'default',
+      title: notificationTitle,
+      body: notificationBody,
+      data: { data: 'Bills created' },
+      _displayInForeground: true,
+    })
+  }
+  // const response = await fetch('https://exp.host/--/api/v2/push/send', {
+  //   method: 'POST',
+  //   headers: {
+  //     Accept: 'application/json',
+  //     'Accept-encoding': 'gzip, deflate',
+  //     'Content-Type': 'application/json',
+  //   },
+  //   body: JSON.stringify(message),
+  // });
+  const body = JSON.stringify(messages);
+  const config = {
+    headers: {
+      Accept: 'application/json',
+      'Accept-encoding': 'gzip, deflate',
+      'Content-Type': 'application/json',
+    }
+  }
+  const response = await axios.post('https://exp.host/--/api/v2/push/send', body, config)
+  console.log(response.data)
 }
 
 const toHash512 = (text) => {
@@ -83,10 +116,14 @@ const sendSms = (from, to, text) => {
   })
 }
 
+const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
 exports.getTomorrowTime = getTomorrowTime;
 exports.getGopayExpireTime = getGopayExpireTime;
 exports.getMandiriBillExpireTime = getMandiriBillExpireTime;
 exports.getCstoreExpireTime = getCstoreExpireTime;
 exports.sendPushNotification = sendPushNotification;
+exports.sendChunkPushNotification = sendChunkPushNotification;
 exports.toHash512 = toHash512;
 exports.sendSms = sendSms;
+exports.months = months;

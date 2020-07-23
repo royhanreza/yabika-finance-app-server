@@ -27,10 +27,10 @@ router.get('/:id', (req, res) => {
 router.post('/', async (req, res) => {
   const { name } = req.body;
 
-  const paymentTypeExist = await PaymentType.findOne({ name });
-  if(paymentTypeExist) return res.status(400).send({msg: 'Payment type already exist'});
+  const paymentTypeExist = await PaymentType.findOne({ name: name.toLowerCase() });
+  if(paymentTypeExist) return res.status(400).send({msg: 'Tipe pembayaran sudah ada'});
 
-  const paymentType = new PaymentType({ name })
+  const paymentType = new PaymentType({ name: name.toLowerCase() })
 
   try {
     const newPaymentType = await paymentType.save();
@@ -48,6 +48,22 @@ router.put('/:id', async (req, res) => {
   const _id = req.params.id;
   try {
     const newPaymentType = await PaymentType.findOneAndUpdate({_id}, {name}, {new: true});
+    res.send({paymentType: newPaymentType})
+  } catch(error) {
+    res.status(400).send(error);
+  }
+})
+
+router.patch('/:id', async (req, res) => {
+  const _id = req.params.id;
+
+  if(req.body.isNewName) {
+    const paymentTypeExist = await PaymentType.findOne({ name: req.body.name.toLowerCase() });
+    if(paymentTypeExist) return res.status(400).send({msg: 'Tipe pembayaran sudah ada'});
+  }
+
+  try {
+    const newPaymentType = await PaymentType.findOneAndUpdate({_id}, req.body, {new: true});
     res.send({paymentType: newPaymentType})
   } catch(error) {
     res.status(400).send(error);

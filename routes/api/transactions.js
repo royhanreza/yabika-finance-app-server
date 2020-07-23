@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const verify = require('../../middleware/verify');
 const Transaction = require('../../models/Transaction');
+const Payment = require('../../models/Payment');
+const Bill = require('../../models/Bill');
 const util = require('../../resources/utils')
 
 router.get('/', (req, res) => {
-  Transaction.find().populate('student').populate('payment_method')
+  Transaction.find().populate({ path: 'student', populate: { path: 'student_class' } }).populate('payment_method').sort({created_at: -1})
     .then(transaction => res.json(transaction))
 })
 
@@ -33,6 +35,8 @@ router.post('/', async (req, res) => {
   //   res.status(400).send(error);
   // }
 
+  //-------------------------------------------------------------------------------------
+
   try {
     const billResponse = await Bill.updateMany({ _id: req.body.selectedBills }, { transaction_number: req.body.paymentRequest[0].transaction_number, status: 2 });
     const payments = await Payment.insertMany(req.body.paymentRequest);
@@ -45,16 +49,6 @@ router.post('/', async (req, res) => {
         finalRes.push({
           _id: element._id,
           student: element.student,
-        //   payment_method: {
-        //     image: element.payment_method.image,
-        //     _id:  element.payment_method._id,
-        //     name:  element.payment_method.name,
-        //     transaction_fee_type:  element.payment_method.transaction_fee_type,
-        //     transaction_fee:  element.payment_method.transaction_fee,
-        //     __v:  element.payment_method.__v,
-        //     midtrans_payment_type: element.payment_method.midtrans_payment_type,
-        //     bank: element.payment_method.bank
-        // },
           month: element.month,
           school_year: {
             _id: element.school_year._id,
@@ -81,13 +75,12 @@ router.post('/', async (req, res) => {
       const transaction = new Transaction({ 
         ...req.body.transactionRequest, 
         paymentsDetails: finalRes, 
-        // order_id: response.order_id, 
-        // midtrans_transaction_id: response.transaction_id, 
-        // created_at: response.transaction_time,
-        // expire_at: tomorrow,
-        // va_number: response.va_numbers[0].va_number
+        
       })
       const newTransaction = await transaction.save().then(t => t.populate('payment_method').execPopulate())
+      if(req.body.doSendSms) {
+        util.sendSms('YABIKA', req.body.phone, req.body.smsText).then(response => console.log(response)).catch(error => console.log(error))
+      }
       res.send({payments, transaction: newTransaction, billResponse})
     })
     
@@ -97,6 +90,30 @@ router.post('/', async (req, res) => {
 
   // res.send(req.body)
 
+})
+
+router.delete('/:id', async (req, res) => {
+  const _id = req.params.id;
+  try {
+    const transaction = await Transaction.findById(_id);
+    const paymentDetails = transaction.paymentsDetails.map(payment => payment._id);
+    const deletedPayments = await Payment.deleteMany({ _id: paymentDetails });
+    const updatedBill = await Bill.updateMany({ transaction_number: transaction.transaction_number }, { status: 0, transaction_number: undefined });
+    const deletedTransaction = await Transaction.findByIdAndDelete(_id);
+    res.send({paymentDetails, updatedBill, deletedPayments, deletedTransaction})
+  } catch (error) {
+    console.log(error)
+  }
+})
+
+router.patch('/action/update-to-settlement', async (req, res) => {
+  try {
+    const updatedTransaction = await Transaction.updateMany({ method: 0 }, { transaction_status: 'settlement' });
+    res.send(updatedTransaction)
+  } catch (error) {
+    res.status(400).send('FAIL TO UPDATE')
+  }
+  
 })
 
 module.exports = router;
