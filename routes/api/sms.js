@@ -3,6 +3,7 @@ const router = express.Router();
 const util = require('../../resources/utils');
 const Student = require('../../models/Student');
 const Bill = require('../../models/Bill');
+const SmsQuota = require('../../models/SmsQuota')
 
 const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
@@ -56,27 +57,41 @@ router.get('/nexmo/inbound-sms', async(req, res) => {
     return res.send({ status: 400, msg: 'Siswa tidak ditemukan' })
   }
 
-  const studentBills = await Bill.find({ student: student._id, status: 0 }).populate('type_of_payment').populate('school_year')
+  const studentReachedQuota = await SmsQuota.findOne({ nis });
 
-  let finalBills = `Tagihan ${nis} - ${student.name} :\n`;
-
-  if(studentBills.length < 1) {
-    finalBills += 'Tidak ada tagihan'
-  } else {
-    for(let i = 0; i < studentBills.length; i++) {
-      const month = (studentBills[i].month) ? months[studentBills[i].month] : '';
-      const space = (i < studentBills.length - 1) ? '\n' : '';
-      finalBills += `${i + 1}. ${studentBills[i].type_of_payment.name} - ${month} ${studentBills[i].school_year.name} (Rp ${studentBills[i].cost})${space}`;
+  if(!studentReachedQuota) {
+    const studentBills = await Bill.find({ student: student._id, status: 0 }).populate('type_of_payment').populate('school_year')
+  
+    let finalBills = `Tagihan ${nis} - ${student.name} :\n`;
+  
+    if(studentBills.length < 1) {
+      finalBills += 'Tidak ada tagihan'
+    } else {
+      for(let i = 0; i < studentBills.length; i++) {
+        const month = (studentBills[i].month) ? months[studentBills[i].month] : '';
+        const space = (i < studentBills.length - 1) ? '\n' : '';
+        finalBills += `${i + 1}. ${studentBills[i].type_of_payment.name} - ${month} ${studentBills[i].school_year.name} (Rp ${studentBills[i].cost})${space}`;
+      }
     }
+
+    const studentQuota = new SmsQuota({ nis })
+
+  // try {
+  //   const newClass = await studentClass.save();
+  //   res.send({class: newClass})
+  // } catch(error) {
+  //   res.status(400).send(error);
+  // }
+  
+    util.sendSms(from , msisdn, finalBills).then(async (response) => {
+      const quotaAdded = await studentQuota.save();
+      res.send({msg: response.msg, from, msisdn, response: response.responseData, quota: quotaAdded})
+    }).catch(error => {
+      res.send(error.msg)
+    })
+  } else {
+    res.send({status: 400, msg: 'Siswa telah mencapai quota SMS'})
   }
-
-  util.sendSms(from , msisdn, finalBills).then(response => {
-    res.send({msg: response.msg, from, msisdn, response: response.responseData})
-  }).catch(error => {
-    res.send(error.msg)
-  })
-
-
 
   // res.status(204).send(params)
 })

@@ -6,21 +6,21 @@ const Payment = require('../../models/Payment');
 const Bill = require('../../models/Bill');
 const util = require('../../resources/utils')
 
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   Transaction.find().populate({ path: 'student', populate: { path: 'student_class' } }).populate('payment_method').sort({created_at: -1})
     .then(transaction => res.json(transaction))
 })
 
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   Transaction.findById(req.params.id).populate('payments.payment')
     .then(transaction => res.json(transaction))
 })
-router.get('/without-populate/:id', (req, res) => {
+router.get('/without-populate/:id', verify, (req, res) => {
   Transaction.findById(req.params.id)
     .then(transaction => res.json(transaction))
 })
 
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   // const { payment, payment_method, order_id, transaction_number, method, amount, canceled_at, approved_at, denied_at, refunded_at, expire_at, total } = req.body;
 
   // try {
@@ -92,7 +92,7 @@ router.post('/', async (req, res) => {
 
 })
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     const transaction = await Transaction.findById(_id);
@@ -106,7 +106,7 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
-router.patch('/action/update-to-settlement', async (req, res) => {
+router.patch('/action/update-to-settlement', verify, async (req, res) => {
   try {
     const updatedTransaction = await Transaction.updateMany({ method: 0 }, { transaction_status: 'settlement' });
     res.send(updatedTransaction)

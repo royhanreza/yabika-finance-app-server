@@ -6,7 +6,7 @@ const Class = require('../../models/Class');
 // Method: GET
 // URI: /api/classes
 // Desc: Get All Classes
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   Class.find().sort('name')
     .then(classes => res.json(classes))
 })
@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/classes/{id}
 // Desc: Get Class By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   Class.findOne({_id})
     .then(studentClass => res.json(studentClass))
@@ -23,7 +23,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/classes
 // Desc: Create Class
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { name, grade } = req.body;
 
   const classExist = await Class.findOne({ name });
@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.post('/actions/delete-many', async (req, res) => {
+router.post('/actions/delete-many', verify, async (req, res) => {
   const ids = req.body.ids
   try {
     const deletedClass = await Class.deleteMany({_id: ids});
@@ -52,7 +52,7 @@ router.post('/actions/delete-many', async (req, res) => {
 // Method: PUT
 // URI: /api/classes/{id}
 // Desc: Update Class
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const {name, grade} = req.body;
   const _id = req.params.id;
   try {
@@ -66,7 +66,7 @@ router.put('/:id', async (req, res) => {
 // Method: PUT
 // URI: /api/classes/{id}
 // Desc: Update Class
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   const _id = req.params.id;
 
   const name = req.body.name;
@@ -85,7 +85,7 @@ router.patch('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/classes/{id}
 // Desc: Delete Class
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     // await Class.findOneAndUpdate({_id}, {name, grade}, {new: true});

@@ -9,43 +9,8 @@ const BillSetting = require('../../models/BillSetting');
 const SchoolYear = require('../../models/SchoolYear');
 const axios = require('axios')
 const utils = require('../../resources/utils');
-
 let expo = new Expo();
 
-// student: {
-//   type: Schema.Types.ObjectId,
-//   ref: 'Student',
-//   required: true,
-// },
-// type_of_payment: { // jenis pembayaran
-//   type: Schema.Types.ObjectId,
-//   ref: 'TypeOfPayment',
-//   required: true,
-// },
-// month: {
-//   type: Number
-// },
-// school_year: {
-//   type: Schema.Types.ObjectId,
-//   ref: 'SchoolYear',
-//   required: true,
-// },
-// cost: {
-//   type: Number,
-//   required: true,
-// },
-// transaction_number: {
-//   type: String,
-// },
-// status: { // 0: Aktif/Belum Selesai/Dibatalkan, 1: Menunggu Pembayaran  , 2: Selesai
-//   type: Number,
-//   required: true,
-//   default: 0,
-// },
-// created_at: {
-//   type: Date,
-//   default: Date.now
-// }
 
 // Skenario Automatic Bills SPP
 // 1. Periksa pengaturan tagihan
@@ -60,16 +25,61 @@ let expo = new Expo();
 // 10. Insert many bills,
 // 11. End
 
-// Berjalan setiap tanggal 25 - jam 6 - menit 0 - detik 0 - tiap bulan
-// cron.schedule('0 59 * * * *', async () => {
-cron.schedule('0 0 6 25 * *', async () => {
-  let phones = [];
+// REMINDER SMS. Berjalan setiap tanggal 25 - jam 6 - menit 0 - detik 0 - tiap bulan
+// cron.schedule('0 36 * * * *', async () => {
+cron.schedule('0 30 12 25 * *', async () => {
+  // let phones = [];
 
-  const activeBills = await Bill.find({ status: 0 }).populate('student');
+  // const activeBills = await Bill.find({ status: 0 }).populate('student');
+  // for( let i = 0; i < activeBills.length; i++ ) {
+  //   if(!activeBills[i].student.expo_push_token) {
+  //     if(activeBills[i].student.phone && (phones.indexOf(activeBills[i].student.phone) < 0)) {
+  //       phones.push(activeBills[i].student.phone) //TODOTODO
+  //     } else {
+  //       continue
+  //     }
+  //   } else {
+  //     continue
+  //   }
+  // }
+
+  // const smsText = 'Ada tagihan yang belum dibayar. Segera lakukan pembayaran melalui aplikasi atau langsung'
+
+  // if(phones.length > 0) {
+  //   for(let i = 0; i < phones.length; i++) {
+  //     let finalNumber = '';
+  //     if(phones[i].substr(0, 1) == '0' ) {
+  //       finalNumber = '62' + phones[i].substr(1)
+  //     } else {
+  //       finalNumber = phones[i];
+  //     }
+  //     utils.sendSms('YABIKA', finalNumber, smsText ).then(response => {
+  //       console.log('Berhasil mengirim SMS ke ' + finalNumber)
+  //     }).catch(error => {
+  //       console.log('Gagal megirim SMS ke ' + finalNumber)
+  //     })
+  //   }
+  //   console.log('SMS Tagihan reminder terkirim')
+  // } else {
+  //   console.log('Semua siswa telah membayar tagihan')
+  // }
+
+  let messages = [];
+
+  const activeBills = await Bill.find({ status: 0 }).populate('type_of_payment').populate('school_year').populate({ path: 'student', populate: { path: 'student_class' } })
   for( let i = 0; i < activeBills.length; i++ ) {
     if(!activeBills[i].student.expo_push_token) {
-      if(activeBills[i].student.phone && (phones.indexOf(activeBills[i].student.phone) < 0)) {
-        phones.push(activeBills[i].student.phone) //TODOTODO
+      if(activeBills[i].student.phone) {
+        const indexMessages = messages.map(m => m.to).indexOf(activeBills[i].student.phone);
+        if(indexMessages < 0) {
+          messages.push({
+            to: activeBills[i].student.phone,
+            text: `${activeBills[i].student.nis}-${activeBills[i].student.name}. Harap segera membayar tagihan sebagai berikut:\n- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+          })
+        } else {
+          // phones.push(activeBills[i].student.phone)
+          messages[indexMessages].text += `- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+        }
       } else {
         continue
       }
@@ -78,21 +88,20 @@ cron.schedule('0 0 6 25 * *', async () => {
     }
   }
 
-  const smsText = 'Ada tagihan yang belum dibayar. Segera lakukan pembayaran melalui aplikasi atau langsung'
-
-  if(phones.length > 0) {
-    for(let i = 0; i < phones.length; i++) {
+  if(messages.length > 0) {
+    for(let i = 0; i < messages.length; i++) {
       let finalNumber = '';
-      if(phones[i].substr(0, 1) == '0' ) {
-        finalNumber = '62' + phones[i].substr(1)
+      if(messages[i].to.substr(0, 1) == '0' ) {
+        finalNumber = '62' + messages[i].to.substr(1)
       } else {
-        finalNumber = phones[i];
+        finalNumber = messages[i].to;
       }
-      utils.sendSms('YABIKA', finalNumber, smsText ).then(response => {
-        console.log('Berhasil mengirim SMS ke ' + finalNumber)
+      utils.sendSms('YABIKA', finalNumber, messages[i].text ).then(response => {
+        console.log('SMS sent to ' + finalNumber)
       }).catch(error => {
-        console.log('Gagal megirim SMS ke ' + finalNumber)
+        console.log('Failed to send SMS' + finalNumber)
       })
+      // console.log(finalNumber, messages[i].text)
     }
     console.log('SMS Tagihan reminder terkirim')
   } else {
@@ -100,8 +109,9 @@ cron.schedule('0 0 6 25 * *', async () => {
   }
 })
 
-// Berjalan setiap tanggal 25-31 - jam 6 - menit 0 - detik 0 - tiap bulan
-cron.schedule('0 0 6 25-31 * *', async () => {
+// REMINDER NOTIFIKASI. Berjalan setiap tanggal 25-31 - jam 6 - menit 0 - detik 0 - tiap bulan
+// cron.schedule('0 37 * * * *', async () => {
+cron.schedule('0 20 12 25-31 * *', async () => {
   let someExpoPushToken = [];
 
   const activeBills = await Bill.find({ status: 0 }).populate('student');
@@ -128,7 +138,46 @@ cron.schedule('0 0 6 25-31 * *', async () => {
   console.log('Notifications sent')
 })
 
-// Berjalan setiap tanggal 1 - jam 0 - menit 0 - detik 0 - tiap bulan
+// REMINDER EMAIL. Berjalan setiap tanggal 25-31 - jam 6 - menit 30 - detik 0 - tiap bulan
+// cron.schedule('0 44 * * * *', async () => {
+cron.schedule('0 25 12 25-31 * *', async () => {
+  let emails = [];
+
+  const activeBills = await Bill.find({ status: 0 }).populate('type_of_payment').populate('school_year').populate({ path: 'student', populate: { path: 'student_class' } })
+  for( let i = 0; i < activeBills.length; i++ ) {
+    if(activeBills[i].student.email) {
+      const indexEmails = emails.map(m => m.to).indexOf(activeBills[i].student.email);
+      if(indexEmails < 0) {
+        emails.push({
+          from: 'YABIKA <ypi.yabika@gmail.com>',
+          to: activeBills[i].student.email,
+          subject: 'Info Tagihan',
+          text: `${activeBills[i].student.nis}-${activeBills[i].student.name}. Harap segera membayar tagihan sebagai berikut:\n- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+        })
+      } else {
+        // phones.push(activeBills[i].student.phone)
+        emails[indexEmails].text += `- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+      }
+    } else {
+      continue
+    }
+  }
+
+  if(emails.length > 0) {
+    for(let i = 0; i < emails.length; i++) {
+      utils.sendEmail(emails[i]).then(res => {
+        // console.log(res)
+      }).catch(err => {
+        console.log(err)
+      })
+    }
+    console.log({msg: 'emails sent'})
+  } else {
+    console.log('Semua siswa telah membayar tagihan')
+  }
+})
+
+// TAGIHAN OTOMATIS. Berjalan setiap tanggal 1 - jam 0 - menit 0 - detik 0 - tiap bulan
 cron.schedule('0 0 0 1 * *', async () => {
   console.log('Running scheduled proccess');
   let someExpoPushToken = [];
@@ -469,7 +518,7 @@ router.post('/actions/node-cron-sms/test', async (req, res) => {
   
   let phones = [];
 
-  const activeBills = await Bill.find({ status: 0 }).populate('student');
+  const activeBills = await Bill.find({ status: 0 }).populate('type_of_payment').populate('school_year').populate({ path: 'student', populate: { path: 'student_class' } })
   for( let i = 0; i < activeBills.length; i++ ) {
     if(!activeBills[i].student.expo_push_token) {
       if(activeBills[i].student.phone && (phones.indexOf(activeBills[i].student.phone) < 0)) {
@@ -508,6 +557,96 @@ router.post('/actions/node-cron-sms/test', async (req, res) => {
     res.send('Semua siswa telah membayar tagihan')
   }
 
+})
+
+router.post('/actions/node-cron-sms/test-2', async (req, res) => {
+  
+  let messages = [];
+
+  const activeBills = await Bill.find({ status: 0 }).populate('type_of_payment').populate('school_year').populate({ path: 'student', populate: { path: 'student_class' } })
+  for( let i = 0; i < activeBills.length; i++ ) {
+    if(!activeBills[i].student.expo_push_token) {
+      if(activeBills[i].student.phone) {
+        const indexMessages = messages.map(m => m.to).indexOf(activeBills[i].student.phone);
+        if(indexMessages < 0) {
+          messages.push({
+            to: activeBills[i].student.phone,
+            text: `${activeBills[i].student.nis}-${activeBills[i].student.name}. Harap segera membayar tagihan sebagai berikut:\n- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+          })
+        } else {
+          // phones.push(activeBills[i].student.phone)
+          messages[indexMessages].text += `- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+        }
+      } else {
+        continue
+      }
+    } else {
+      continue
+    }
+  }
+
+  if(messages.length > 0) {
+    for(let i = 0; i < messages.length; i++) {
+      let finalNumber = '';
+      if(messages[i].to.substr(0, 1) == '0' ) {
+        finalNumber = '62' + messages[i].to.substr(1)
+      } else {
+        finalNumber = messages[i].to;
+      }
+      utils.sendSms('YABIKA', finalNumber, messages[i].text ).then(response => {
+        console.log('SMS sent to ' + finalNumber)
+      }).catch(error => {
+        console.log('Failed to send SMS' + finalNumber)
+      })
+      // console.log(finalNumber, messages[i].text)
+    }
+    res.send('sent')
+  } else {
+    res.send('Semua siswa telah membayar tagihan')
+  }
+
+})
+
+router.post('/actions/node-cron-email/test', async (req, res) => {
+  let emails = [];
+
+  const activeBills = await Bill.find({ status: 0 }).populate('type_of_payment').populate('school_year').populate({ path: 'student', populate: { path: 'student_class' } })
+  for( let i = 0; i < activeBills.length; i++ ) {
+    if(activeBills[i].student.email) {
+      const indexEmails = emails.map(m => m.to).indexOf(activeBills[i].student.email);
+      if(indexEmails < 0) {
+        emails.push({
+          from: 'YABIKA <ypi.yabika@gmail.com>',
+          to: activeBills[i].student.email,
+          subject: 'Info Tagihan',
+          text: `${activeBills[i].student.nis}-${activeBills[i].student.name}. Harap segera membayar tagihan sebagai berikut:\n- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+        })
+      } else {
+        // phones.push(activeBills[i].student.phone)
+        emails[indexEmails].text += `- ${activeBills[i].type_of_payment.name} ${(activeBills[i].month) ? utils.months[activeBills[i].month] : ''} ${activeBills[i].school_year.name}\n`
+      }
+    } else {
+      continue
+    }
+  }
+
+  if(emails.length > 0) {
+    for(let i = 0; i < emails.length; i++) {
+      utils.sendEmail(emails[i]).then(res => {
+        console.log(res)
+      }).catch(err => {
+        console.log(err)
+      })
+      // utils.sendSms('YABIKA', finalNumber, messages[i].text ).then(response => {
+      //   console.log('SMS sent to ' + finalNumber)
+      // }).catch(error => {
+      //   console.log('Failed to send SMS' + finalNumber)
+      // })
+    }
+    res.send({msg: 'emails sent', data: emails})
+  } else {
+    res.send('Semua siswa telah membayar tagihan')
+  }
 })
 
 module.exports = router;

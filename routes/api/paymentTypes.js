@@ -7,7 +7,7 @@ const { route } = require('./payments');
 // Method: GET
 // URI: /api/payment-types
 // Desc: Get All Payment Types
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   PaymentType.find()
     .then(paymentTypes => res.json(paymentTypes))
 })
@@ -15,7 +15,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/payment-types/{id}
 // Desc: Get Payment Type By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   PaymentType.findOne({_id})
     .then(paymentType => res.json(paymentType))
@@ -24,7 +24,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/payment-types
 // Desc: Create Payment Type
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { name } = req.body;
 
   const paymentTypeExist = await PaymentType.findOne({ name: name.toLowerCase() });
@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
 // Method: PUT
 // URI: /api/payment-types/{id}
 // Desc: Update Payment Type
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const {name} = req.body;
   const _id = req.params.id;
   try {
@@ -54,7 +54,7 @@ router.put('/:id', async (req, res) => {
   }
 })
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   const _id = req.params.id;
 
   if(req.body.isNewName) {
@@ -73,7 +73,7 @@ router.patch('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/payment-types/{id}
 // Desc: Delete Payment Type
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     await PaymentType.findOneAndDelete({_id})

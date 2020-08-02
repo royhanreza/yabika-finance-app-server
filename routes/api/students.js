@@ -11,7 +11,7 @@ const Transaction = require('../../models/Transaction');
 // Method: GET
 // URI: /api/students
 // Desc: Get All Students
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   Student.find().populate('student_class').populate('transportation_location')
     .then(students => res.json(students))
 })
@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/majors/{id}
 // Desc: Get Major By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   try {
     Student.findOne({_id}).populate('student_class').populate('transportation_location')
@@ -30,7 +30,7 @@ router.get('/:id', (req, res) => {
 })
 
 router.get('/login/data', verify, (req, res) => {
-  Student.findById(req.student.id).populate('student_class').populate('transportation_location')
+  Student.findById(req.user.id).populate('student_class').populate('transportation_location')
     .then(student => res.json(student))
 })
 
@@ -53,7 +53,7 @@ router.get('/:studentId/bills/type-of-payments/:typeOfPaymentId', verify, (req, 
     .then(bills => res.json(bills))
 })
 
-router.get('/:studentId/history', async (req, res) => {
+router.get('/:studentId/history', verify, async (req, res) => {
   const studentId = req.params.studentId;
   Transaction.find({student: studentId, completed: 1})
     .populate('payment_method')
@@ -61,7 +61,7 @@ router.get('/:studentId/history', async (req, res) => {
     .then(payment => res.json(payment))
 })
 
-router.get('/:studentId/transactions', async (req, res) => {
+router.get('/:studentId/transactions', verify, async (req, res) => {
   const studentId = req.params.studentId;
   Transaction.find({student: studentId})
     .populate('payment_method')
@@ -69,7 +69,7 @@ router.get('/:studentId/transactions', async (req, res) => {
     .then(transaction => res.json(transaction))
 })
 
-router.get('/:studentId/payments', async (req, res) => {
+router.get('/:studentId/payments', verify, async (req, res) => {
   const studentId = req.params.studentId;
   Payment.find({student: studentId})
     .populate('payment_method')
@@ -79,7 +79,7 @@ router.get('/:studentId/payments', async (req, res) => {
     .then(payment => res.json(payment))
 })
 
-router.get('/:studentId/pay-data', async (req, res) => {
+router.get('/:studentId/pay-data', verify, async (req, res) => {
   const studentId = req.params.studentId;
   const student = await Student.findOne({_id: studentId})
     .populate('student_class')
@@ -95,7 +95,7 @@ router.get('/:studentId/pay-data', async (req, res) => {
 // Method: POST
 // URI: /api/students
 // Desc: Create New Student
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
 
   // res.send(req.body)
 
@@ -166,7 +166,7 @@ router.post('/', async (req, res) => {
 // Method: POST
 // URI: /api/students
 // Desc: Create New Student
-router.post('/actions/insert-many', async (req, res) => {
+router.post('/actions/insert-many', verify, async (req, res) => {
   const students = req.body.students;
   const finalStudents = await Promise.all(students.map( async (student) => {
     const salt = await bcrypt.genSalt(10)
@@ -247,6 +247,7 @@ router.post('/actions/insert-many', async (req, res) => {
     // const newStudent = await student.save();
     res.send({student: insertedStudents.length})
   } catch(error) {
+    console.log(error)
     res.status(400).send(error);
   }
 })
@@ -254,7 +255,7 @@ router.post('/actions/insert-many', async (req, res) => {
 // Method: PUT
 // URI: /api/students/{id}
 // Desc: Update Student
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const {
     nis,
     name,
@@ -314,7 +315,7 @@ router.put('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/students/{id}
 // Desc: Delete Student
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
 
   try {
@@ -326,7 +327,7 @@ router.delete('/:id', async (req, res) => {
 })
 
 
-router.post('/actions/delete-many', async (req, res) => {
+router.post('/actions/delete-many', verify, async (req, res) => {
   const ids = req.body.ids
   try {
     const deletedStudents = await Student.deleteMany({_id: ids});
@@ -339,7 +340,7 @@ router.post('/actions/delete-many', async (req, res) => {
 // Method: PATCH
 // URI: /api/students/{id}
 // Desc: Update Student
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   const _id = req.params.id;
 
   const { old_nis, old_email, nis, email } = req.body
@@ -364,7 +365,7 @@ router.patch('/:id', async (req, res) => {
   }
 })
 
-router.patch('/:id/actions/edit-account', async (req, res) => {
+router.patch('/:id/actions/edit-account', verify, async (req, res) => {
   const _id = req.params.id;
   const { username, email, currentPassword, newPassword, isNewUsername, isNewEmail, isNewPassword, oldUsername, oldEmail } = req.body
   
@@ -430,7 +431,7 @@ router.patch('/:id/actions/update-expo-push-token', async (req, res) => {
   // res.send({_id, expo_push_token})
 })
 
-router.patch('/actions/graduate', async (req, res) => {
+router.patch('/actions/graduate', verify, async (req, res) => {
   const ids = req.body.ids;
   try {
     const updatedStudent = await Student.updateMany({_id: ids}, { status: 2 });
@@ -440,7 +441,7 @@ router.patch('/actions/graduate', async (req, res) => {
   }
 })
 
-router.patch('/actions/grade-promote', async (req, res) => {
+router.patch('/actions/grade-promote', verify, async (req, res) => {
   const ids = req.body.ids;
   const nextClassId = req.body.nextClassId;
   try {
@@ -472,7 +473,7 @@ router.post('/login', async (req, res) => {
   const token = jwt.sign({id: student._id}, JWT_SECRET, {expiresIn: '1d'});
 
   // res.header('x-auth-token', token).send({token, user})
-  res.json({token, student})
+  res.json({token, user: student})
 })
 
 router.get('/find/:identity', async(req, res) => {

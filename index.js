@@ -18,6 +18,7 @@ const payments = require('./routes/api/payments');
 const transactions = require('./routes/api/transactions');
 const sms = require('./routes/api/sms');
 const billSetting = require('./routes/api/billSettings');
+const emails = require('./routes/api/emails');
 
 
 const app = express();
@@ -49,6 +50,7 @@ app.use('/api/payments', payments);
 app.use('/api/transactions', transactions);
 app.use('/api/sms', sms);
 app.use('/api/bill-settings', billSetting);
+app.use('/api/emails', emails);
 
 
 const port = process.env.PORT || 5000;

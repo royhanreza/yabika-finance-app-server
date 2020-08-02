@@ -7,12 +7,12 @@ const { route } = require('./payments');
 // Method: GET
 // URI: /api/payment-types
 // Desc: Get All Payment Types
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   BillSetting.find()
     .then(settings => res.json(settings))
 })
 
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { mi_cost, mts_cost, ma_cost } = req.body;
   try {
     const setting = new BillSetting({ mi_cost, mts_cost, ma_cost })
@@ -23,7 +23,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   const _id = req.params.id
   try {
     const updatedSettingBills = await BillSetting.findByIdAndUpdate(_id, req.body, {new: true})

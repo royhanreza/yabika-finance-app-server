@@ -14,16 +14,26 @@ const { route } = require('./students');
 
 const MIDTRANS_BASE_URL = (process.env.MODE == 'dev') ? 'https://api.sandbox.midtrans.com' : 'https://api.midtrans.com';
 
-const core = new midtransClient.CoreApi({
+const core = (process.env.MODE == 'dev') ? new midtransClient.CoreApi({
   isProduction: false,
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY,
+  serverKey: process.env.MIDTRANS_SERVER_KEY_DEV,
+  clientKey: process.env.MIDTRANS_CLIENT_KEY_DEV,
+}) : new midtransClient.CoreApi({
+  isProduction: true,
+  serverKey: process.env.MIDTRANS_SERVER_KEY_PROD,
+  clientKey: process.env.MIDTRANS_CLIENT_KEY_PROD,
 })
+
+// const core = new midtransClient.CoreApi({
+//   isProduction: true,
+//   serverKey: 'Mid-server-1DHhlUWItA2bpeABFBZIR2hk',
+//   clientKey: 'Mid-client-C4OiwWvVNDd4Dqqg',
+// })
 
 // Method: GET
 // URI: /api/majors
 // Desc: Get All Majors
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   Payment.find()
     .then(payments => res.json(payments))
 })
@@ -31,7 +41,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/majors/{id}
 // Desc: Get Major By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   Payment.findOne({_id})
     .then(payment => res.json(payment))
@@ -40,7 +50,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/majors
 // Desc: Create Major
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { student, payment_method, month, school_year, type_of_payment, administrator, transaction_number, method, amount, canceled_at, approved_at, denied_at, refunded_at, expire_at } = req.body;
 
   const studentExist = await Payment.findOne({ student });
@@ -78,7 +88,7 @@ async function dataExist(req) {
 // Method: POST
 // URI: /api/majors
 // Desc: Create Major
-router.post('/online/checkout', async (req, res) => {
+router.post('/online/checkout', verify, async (req, res) => {
 
   // const response = {
   //   order_id: "123123",
@@ -204,13 +214,16 @@ router.post('/online/checkout', async (req, res) => {
 
 })
 
-router.post('/online/cancel/:transactionId', async (req, res) => {
+router.post('/online/cancel/:transactionId', verify, async (req, res) => {
   const transactionId = req.params.transactionId;
+
+  const serverKey = (process.env.MODE == 'dev') ? process.env.MIDTRANS_SERVER_KEY_DEV : process.env.MIDTRANS_SERVER_KEY_PROD
+
   const config = {
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      'Authorization': 'Basic ' + Buffer.from(process.env.MIDTRANS_SERVER_KEY + ':').toString('base64')
+      'Authorization': 'Basic ' + Buffer.from(serverKey + ':').toString('base64')
     }
   }
   axios.post(`${MIDTRANS_BASE_URL}/v2/${transactionId}/cancel`, req.body, config).then(response => {
@@ -260,6 +273,7 @@ router.post('/midtrans/notification_handler', (req, res) => {
   // } catch (e) {
   //   return res.status(400).send('Bad Request');
   // }
+  const serverKey = (process.env.MODE == 'dev') ? process.env.MIDTRANS_SERVER_KEY_DEV : process.env.MIDTRANS_SERVER_KEY_PROD
 
   core.transaction.notification(receivedJson)
     .then( async (transactionStatusObject) => {
@@ -273,7 +287,7 @@ router.post('/midtrans/notification_handler', (req, res) => {
       const statusCode = transactionStatusObject.status_code;
       const grossAmount = transactionStatusObject.gross_amount;
 
-      const key = orderId + statusCode + grossAmount + process.env.MIDTRANS_SERVER_KEY;
+      const key = orderId + statusCode + grossAmount + serverKey;
       const finalKey = util.toHash512(key);
       if(transactionStatusObject.signature_key !== finalKey) {
         return res.status(400).send({status: 400, msg: 'You are not allowed to send notification'});
@@ -281,7 +295,7 @@ router.post('/midtrans/notification_handler', (req, res) => {
   
       let summary = `Transaction notification received. Order ID: ${orderId}. Transaction status: ${transactionStatus}. Fraud status: ${fraudStatus}.<br>Raw notification object:<pre>${JSON.stringify(transactionStatusObject, null, 2)}</pre> STATUS CODE ${statusCode} GROSS AMOUNT ${grossAmount}`;
 
-      const transaction = await Transaction.findOne({ order_id: orderId })
+      const transaction = await Transaction.findOne({ order_id: orderId }).populate({ path: 'student', populate: { path: 'student_class' } }).sort({ created_at: -1 })
       // const user = await User.findById(payment.user);
       transaction.transaction_status = transactionStatus || '';
       // [5.B] Handle transaction status on your backend via notification alternatively
@@ -297,7 +311,7 @@ router.post('/midtrans/notification_handler', (req, res) => {
         // Note: Non-card transaction will become 'settlement' on payment success
         // Card transaction will also become 'settlement' D+1, which you can ignore
         // because most of the time 'capture' is enough to be considered as success
-        util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Pembayaran Berhasil', 'Pembayaran telah diterima')
+        util.sendPushNotification(transaction.student.expo_push_token, 'Pembayaran Berhasil', 'Pembayaran telah diterima')
         transaction.completed = 1;
         transaction.completed_at = currentDate;
         await transaction.save();
@@ -309,11 +323,11 @@ router.post('/midtrans/notification_handler', (req, res) => {
         transactionStatus == 'expire'){
         // TODO set transaction status on your databaase to 'failure'
         if(transactionStatus == 'cancel') {
-          util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Transaksi Dibatalkan', 'Transaksi telah dibatalkan')
+          util.sendPushNotification(transaction.student.expo_push_token, 'Transaksi Dibatalkan', 'Transaksi telah dibatalkan')
           transaction.canceled_at = transactionTime
           
         } else if(transactionStatus == 'deny') {
-          util.sendPushNotification('ExponentPushToken[4z0nuTCjNQ-ATRh9w4qEar]', 'Transaksi ditolak', 'Transaksi telah ditolak')
+          util.sendPushNotification(transaction.student.expo_push_token, 'Transaksi ditolak', 'Transaksi telah ditolak')
           transaction.denied_at = transactionTime
           
         }
@@ -335,14 +349,16 @@ router.post('/midtrans/notification_handler', (req, res) => {
       // console.log(summary);
       res.send(summary);
     }).catch(err => {
-      res.send(err)
+      console.log(err)
+      // res.send(err)
+      res.status(204).send()
     })
 })
 
 // Method: PUT
 // URI: /api/majors/{id}
 // Desc: Update Major
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const {student, payment_method, month, school_year, type_of_payment, administrator, transaction_number, method, amount, canceled_at, approved_at, denied_at, refunded_at, expire_at} = req.body;
   const _id = req.params.id;
   try {
@@ -356,7 +372,7 @@ router.put('/:id', async (req, res) => {
 // Method: PUT
 // URI: /api/majors/{id}
 // Desc: Update Major
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     const newPayment = await Payment.findOneAndUpdate({_id}, req.body, {new: true});
@@ -369,7 +385,7 @@ router.patch('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/majors/{id}
 // Desc: Delete Major
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     await Payment.findOneAndDelete({_id})
@@ -381,11 +397,11 @@ router.delete('/:id', async (req, res) => {
 
 //============================================================================================================================
 
-router.delete('/delete/all', async (req, res) => {
+router.delete('/delete/all', verify, async (req, res) => {
   await Payment.deleteMany().then(response => res.send('ALL PAYMENTS DELETED'))
 })
 
-router.delete('/delete/all-transactions', async (req, res) => {
+router.delete('/delete/all-transactions', verify, async (req, res) => {
   const completed = req.body.completed
   await Transaction.deleteMany().then(response => res.send('ALL TRANSACTIONS DELETED'))
 })

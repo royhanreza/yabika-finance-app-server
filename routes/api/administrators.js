@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken')
 // Method: GET
 // URI: /api/majors
 // Desc: Get All Majors
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   Administrator.find()
     .then(administrators => res.json(administrators))
 })
@@ -17,7 +17,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/majors/{id}
 // Desc: Get Major By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   Administrator.findOne({_id})
     .then(administrator => res.json(administrator))
@@ -26,7 +26,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/majors
 // Desc: Create Major
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { nip, name, access_rights, position, address, username, email, password, phone } = req.body;
 
   const usernameExist = await Administrator.findOne({ username });
@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
 // Method: PUT
 // URI: /api/majors/{id}
 // Desc: Update Major
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const { nip, name, access_rights, position, address, username, email, password, phone } = req.body;
   const _id = req.params.id;
 
@@ -81,11 +81,11 @@ router.post('/login', async (req, res) => {
   const token = jwt.sign({id: admin._id}, JWT_SECRET, {expiresIn: '1d'});
 
   // res.header('x-auth-token', token).send({token, user})
-  res.json({token, admin})
+  res.json({token, user: admin})
 })
 
-router.get('/login/data', verifyAdmin, (req, res) => {
-  Administrator.findById(req.administrator.id)
+router.get('/login/data', verify, (req, res) => {
+  Administrator.findById(req.user.id)
     .then(admin => res.json(admin))
 })
 
@@ -125,7 +125,7 @@ router.patch('/:id', async (req, res) => {
   }
 })
 
-router.patch('/actions/edit-administrator/:id', async (req, res) => {
+router.patch('/actions/edit-administrator/:id', verify, async (req, res) => {
   const _id = req.params.id;
 
   try {
@@ -138,7 +138,7 @@ router.patch('/actions/edit-administrator/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/majors/{id}
 // Desc: Delete Major
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     await Administrator.findOneAndDelete({_id})

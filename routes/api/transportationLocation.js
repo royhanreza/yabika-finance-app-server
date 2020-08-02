@@ -6,7 +6,7 @@ const TransportationLocation = require('../../models/TransportationLocation');
 // Method: GET
 // URI: /api/transportation-locations
 // Desc: Get All Transportation Location
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   TransportationLocation.find()
     .then(transportationLocations => res.json(transportationLocations))
 })
@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/transportation-locations/{id}
 // Desc: Get Transportation Location By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   TransportationLocation.findOne({_id})
     .then(transportationLocation => res.json(transportationLocation))
@@ -23,7 +23,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/transportation-locations
 // Desc: Create Transportation Location
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { location, cost } = req.body;
 
   const locationExist = await TransportationLocation.findOne({ location: location.toLowerCase() });
@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
 // Method: PUT
 // URI: /api/transportation-locations/{id}
 // Desc: Update Transportation Location
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const {location, cost} = req.body;
   const _id = req.params.id;
   try {
@@ -53,7 +53,7 @@ router.put('/:id', async (req, res) => {
   }
 })
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   
   const _id = req.params.id;
 
@@ -73,7 +73,7 @@ router.patch('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/transportation-locations/{id}
 // Desc: Delete Transportation Location
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     const deleted = await TransportationLocation.findOneAndDelete({_id})

@@ -1,7 +1,8 @@
 const axios = require('axios');
 const moment = require('moment');
 const crypto = require('crypto');
-const Nexmo = require('nexmo')
+const Nexmo = require('nexmo');
+const nodemailer = require('nodemailer');
 require('dotenv').config()
 
 const nexmo = new Nexmo({
@@ -56,6 +57,7 @@ const sendPushNotification = async (expoPushToken, notificationTitle, notificati
   console.log(response.data)
 }
 
+// SEND CHUCK/BULK NOTIFICATIONS
 const sendChunkPushNotification = async (someExpoPushToken, notificationTitle, notificationBody) => {
   const messages = [];
   for(let i = 0; i < someExpoPushToken.length; i++) {
@@ -96,6 +98,7 @@ const toHash512 = (text) => {
   return resHash;
 }
 
+// SEND SMS
 const sendSms = (from, to, text) => {
   return new Promise((resolve, reject) => {
     nexmo.message.sendSms(from, to, text, (err, responseData) => {
@@ -116,6 +119,29 @@ const sendSms = (from, to, text) => {
   })
 }
 
+// SEND EMAIL
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.NODEMAILER_EMAIL,
+    pass: process.env.NODEMAILER_PASSWORD 
+  }
+});
+
+const sendEmail = (mail) => {
+  return new Promise((resolve, reject) => {
+    transporter.sendMail(mail, function(error, info){
+      if (error) {
+        reject(error)
+        // console.log(error);
+      } else {
+        // console.log('Email sent: ' + info.response);
+        resolve('Email sent: ' + info.response)
+      }
+    });
+  })
+}
+
 const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
 exports.getTomorrowTime = getTomorrowTime;
@@ -126,4 +152,5 @@ exports.sendPushNotification = sendPushNotification;
 exports.sendChunkPushNotification = sendChunkPushNotification;
 exports.toHash512 = toHash512;
 exports.sendSms = sendSms;
+exports.sendEmail = sendEmail;
 exports.months = months;

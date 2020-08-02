@@ -6,7 +6,7 @@ const SchoolYear = require('../../models/SchoolYear');
 // Method: GET
 // URI: /api/school-years
 // Desc: Get All School years
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   SchoolYear.find()
     .then(schoolYears => res.json(schoolYears))
 })
@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/school-years/{id}
 // Desc: Get School Year By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   SchoolYear.findOne({_id})
     .then(schoolYear => res.json(schoolYear))
@@ -23,7 +23,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/school-years
 // Desc: Create School Year
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { yearStart, yearEnd } = req.body;
   const name = yearStart + '/' + yearEnd; 
 
@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
 // Method: PUT
 // URI: /api/school-years/{id}
 // Desc: Update School Year
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const {name} = req.body;
   const _id = req.params.id;
   try {
@@ -57,7 +57,7 @@ router.put('/:id', async (req, res) => {
 // Method: PUT
 // URI: /api/school-years/{id}
 // Desc: Update School Year
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
 
   const schoolYearExist = await SchoolYear.findOne({ name: req.body.name });
   if(schoolYearExist) return res.status(400).send({msg: 'Tahun ajaran ' + req.body.name + ' sudah ada'});
@@ -74,7 +74,7 @@ router.patch('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/school-years/{id}
 // Desc: Delete School Year
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     await SchoolYear.findOneAndDelete({_id})

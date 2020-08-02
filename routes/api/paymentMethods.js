@@ -7,7 +7,7 @@ const { route } = require('./typeOfPayments');
 // Method: GET
 // URI: /api/payment-methods
 // Desc: Get All Payment Methods
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   PaymentMethod.find()
     .then(paymentMethods => res.json(paymentMethods))
 })
@@ -15,7 +15,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/payment-methods/{id}
 // Desc: Get Payment Method By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   PaymentMethod.findOne({_id})
     .then(paymentMethod => res.json(paymentMethod))
@@ -24,7 +24,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/payment-methods
 // Desc: Create Payment Method
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { name, transaction_fee_type, transaction_fee, image } = req.body;
 
   const nameExist = await PaymentMethod.findOne({ name });
@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
 // Method: PUT
 // URI: /api/payment-methods/{id}
 // Desc: Update Payment Method
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const { name, transaction_fee_type, transaction_fee, image } = req.body;
   const _id = req.params.id;
   try {
@@ -57,7 +57,7 @@ router.put('/:id', async (req, res) => {
 // Method: PUT
 // URI: /api/payment-methods/{id}
 // Desc: Update Payment Method
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     const newPaymentMethod = await PaymentMethod.findOneAndUpdate({_id}, req.body, {new: true});
@@ -71,7 +71,7 @@ router.patch('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/payment-methods/{id}
 // Desc: Delete Payment Method
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     await PaymentMethod.findOneAndDelete({_id})
@@ -81,7 +81,7 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
-router.patch('/action/update-many', async (req, res) => {
+router.patch('/action/update-many', verify, async (req, res) => {
   try{
     const updated = await PaymentMethod.updateMany({ status: undefined }, { status: 0 });
     res.send({updated})

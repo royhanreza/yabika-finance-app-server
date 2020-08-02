@@ -6,7 +6,7 @@ const TypeOfPayment = require('../../models/TypeOfPayment');
 // Method: GET
 // URI: /api/type-of-payments
 // Desc: Get All Type Of Payments
-router.get('/', (req, res) => {
+router.get('/', verify, (req, res) => {
   TypeOfPayment.find().populate('payment_type')
     .then(typeOfPayments => res.json(typeOfPayments))
 })
@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
 // Method: GET
 // URI: /api/type-of-payments
 // Desc: Get All Type Of Payments
-router.get('/type/monthly', (req, res) => {
+router.get('/type/monthly', verify, (req, res) => {
   TypeOfPayment.find({payment_type: '5efef33565338931b43c8098'}).populate('payment_type')
     .then(typeOfPayments => res.json(typeOfPayments))
 })
@@ -22,7 +22,7 @@ router.get('/type/monthly', (req, res) => {
 // Method: GET
 // URI: /api/type-of-payments
 // Desc: Get All Type Of Payments
-router.get('/type/non-monthly', (req, res) => {
+router.get('/type/non-monthly', verify, (req, res) => {
   TypeOfPayment.find({payment_type: '5efef33d65338931b43c8099'}).populate('payment_type')
     .then(typeOfPayments => res.json(typeOfPayments))
 })
@@ -30,7 +30,7 @@ router.get('/type/non-monthly', (req, res) => {
 // Method: GET
 // URI: /api/type-of-payments/{id}
 // Desc: Get Type Of Payment By Id
-router.get('/:id', (req, res) => {
+router.get('/:id', verify, (req, res) => {
   const _id = req.params.id;
   TypeOfPayment.findOne({_id})
     .then(typeOfPayment => res.json(typeOfPayment))
@@ -39,7 +39,7 @@ router.get('/:id', (req, res) => {
 // Method: POST
 // URI: /api/type-of-payments
 // Desc: Create Type Of Payment
-router.post('/', async (req, res) => {
+router.post('/', verify, async (req, res) => {
   const { name, payment_type, cost } = req.body;
 
   const nameExist = await TypeOfPayment.findOne({ name, payment_type });
@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
 // Method: PUT
 // URI: /api/type-of-payments/{id}
 // Desc: Update Type Of Payment
-router.put('/:id', async (req, res) => {
+router.put('/:id', verify, async (req, res) => {
   const { name, payment_type, cost } = req.body;
   const _id = req.params.id;
   try {
@@ -70,7 +70,7 @@ router.put('/:id', async (req, res) => {
 })
 
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', verify, async (req, res) => {
   const _id = req.params.id;
 
   // if(req.body.isNewName) {
@@ -89,7 +89,7 @@ router.patch('/:id', async (req, res) => {
 // Method: DELETE
 // URI: /api/type-of-payments/{id}
 // Desc: Delete Type Of Payment
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify, async (req, res) => {
   const _id = req.params.id;
   try {
     await TypeOfPayment.findOneAndDelete({_id})
